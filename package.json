@@ -1,6 +1,6 @@
 {
   "name": "com.newchromantics.poph264",
-  "version": "2.0.0",
+  "version": "1.6.0",
   "displayName": "PopH264",
   "description": "Open-source H264 data decoder & encoder",
   "author":
