@@ -11,10 +11,12 @@ using System.Collections.Generic;
 /// </summary>
 public static class PopH264
 {
-#if UNITY_UWP
-	private const string PluginName = "PopH264.Uwp";	//	PopH264.Uwp.dll
-#elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX || UNITY_EDITOR_WIN
 	private const string PluginName = "PopH264";	//	libPopH264.dylib
+#elif UNITY_EDITOR_WIN
+	private const string PluginName = "PopH264";	//	PopH264.dll
+#elif UNITY_WSA
+	private const string PluginName = "PopH264.Uwp";	//	PopH264.Uwp.dll
 #elif UNITY_IPHONE
 	private const string PluginName = "__Internal";
 #else
