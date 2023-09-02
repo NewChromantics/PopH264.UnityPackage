@@ -11,12 +11,12 @@ using System.Collections.Generic;
 /// </summary>
 public static class PopH264
 {
-#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX || UNITY_EDITOR_WIN
+#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
 	private const string PluginName = "PopH264";	//	libPopH264.dylib
 #elif UNITY_EDITOR_WIN
 	private const string PluginName = "PopH264";	//	PopH264.dll
 #elif UNITY_WSA
-	private const string PluginName = "PopH264.Uwp";	//	PopH264.Uwp.dll
+	private const string PluginName = "PopH264.Uwp.dll";	//	PopH264.Uwp.dll
 #elif UNITY_IPHONE
 	private const string PluginName = "__Internal";
 #else
@@ -340,7 +340,7 @@ public static class PopH264
 		void CheckH264Frame(FrameInput Frame)
 		{
 			//	if we're getting raw fragmented packets (eg. from udp)
-			//	then the packets may not be real frames. 
+			//	then the packets may not be real frames.
 			//	maybe don't need to waste time checking any more, but certainly skip ultra small ones
 			if (Frame.Bytes.Length < 4)
 				return;
@@ -356,7 +356,7 @@ public static class PopH264
 					var Header = PopX.H264.ParseAvccProfile(HeaderBytes);
 					if ( Header.Profile!=PopX.H264.Profile.Baseline || Header.Level > 3 )
 					{
-						Debug.LogWarning("H264 SPS version " + Header.Profile + " " + Header.Level + " higher than supported (Baseline 3.0)"); 
+						Debug.LogWarning("H264 SPS version " + Header.Profile + " " + Header.Level + " higher than supported (Baseline 3.0)");
 					}
 				}
 			}
@@ -530,7 +530,7 @@ public static class PopH264
 	{
 		public byte[]		H264Data;
 		public EncodedFrameMeta	Meta;
-	}	
+	}
 	
 	//	data coming out of PopH264_EncoderPeekData
 	[System.Serializable]
@@ -582,9 +582,36 @@ public static class PopH264
 				PopH264_DestroyEncoder(Instance.Value);
 			Instance = null;
 		}
-		public void PushGreyscaleFrame(byte[] Luma,int Width,int Height,bool Keyframe=false)
+		
+		public void PushFrame(byte[] PixelData,int Width,int Height,TextureFormat Format,bool Keyframe=false)
 		{
-			PushYuvFrame( Luma, null, null, Width, Height, Keyframe );	
+			if ( Format == TextureFormat.RGBA32 )
+				PushFrameRGBA(PixelData,Width,Height);
+			else if ( Format == TextureFormat.R8)
+				PushFrameGreyscale(PixelData,Width,Height);
+			else
+				throw new Exception($"Unhandled input format {Format}");
+		}
+		
+		public void PushFrameGreyscale(byte[] Luma,int Width,int Height,bool Keyframe=false)
+		{
+			PushYuvFrame( Luma, null, null, Width, Height, Keyframe );
+		}
+		
+		public void PushFrameRGBA(byte[] Rgba,int Width,int Height,bool Keyframe=false)
+		{
+			//	todo: convert to yuv
+			var Grey = new byte[Width*Height];
+			for ( var i=0;	i<Grey.Length;	i++ )
+			{
+				var RgbaIndex = i * 4;
+				var r = Rgba[RgbaIndex+0];
+				var g = Rgba[RgbaIndex+1];
+				var b = Rgba[RgbaIndex+2];
+				var a = Rgba[RgbaIndex+3];
+				Grey[i] = r;
+			}
+			PushFrameGreyscale( Grey, Width, Height, Keyframe );
 		}
 		
 		public void PushYuvFrame(byte[] Luma,byte[] ChromaU,byte[] ChromaV,int Width,int Height,bool Keyframe=false)
@@ -593,9 +620,9 @@ public static class PopH264
 			FrameMeta.Width = Width;
 			FrameMeta.Height = Height;
 			FrameMeta.Keyframe = Keyframe;
-			FrameMeta.LumaSize = Luma.Length;
-			FrameMeta.ChromaUSize = ChromaU.Length;
-			FrameMeta.ChromaVSize = ChromaV.Length;
+			FrameMeta.LumaSize = (Luma!=null) ? Luma.Length : 0;
+			FrameMeta.ChromaUSize = (ChromaU!=null) ? ChromaU.Length : 0;
+			FrameMeta.ChromaVSize = (ChromaV!=null) ? ChromaV.Length : 0;
 			
 			var MetaJson = JsonUtility.ToJson(FrameMeta);
 			var MetaJsonAscii = System.Text.ASCIIEncoding.ASCII.GetBytes(MetaJson + "\0");
