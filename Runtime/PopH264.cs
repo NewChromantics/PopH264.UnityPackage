@@ -80,7 +80,7 @@ public static class PopH264
 		RGBA			=3,
 		BGRA			=4,
 		BGR				=5,
-		YYuv_8888_Full	=6,
+		YYuv_8888_Full	=6,	//	poph264 doesnt like this as an input
 		YYuv_8888_Ntsc	=7,
 		Depth16mm		=8,
 		Chroma_U		=9,
@@ -88,6 +88,8 @@ public static class PopH264
 		ChromaUV_88		=11,
 		ChromaVU_88		=12,
 		Luma_Ntsc		=13,
+
+		Yuv_8_8_8 = 99,
 
 
 		ChromaU_8 = Chroma_U,
@@ -620,6 +622,8 @@ public static class PopH264
 		
 		public void PushFrameRGBA(byte[] Rgba,int Width,int Height,bool Keyframe=false)
 		{
+			//	macos & ios supports RGBA input
+#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
 			//	unity texture2D data is often... the wrong size.
 			if ( Rgba.Length > (Width*Height*4) )
 			{
@@ -631,13 +635,15 @@ public static class PopH264
 			{
 				PushFrame( Rgba, null, null, Width, Height, PixelFormat.RGBA, Keyframe );
 			}
-		/*
-		
+#else
 			var HalfWidth = Width/2;
 			var HalfHeight = Height/2;
-			var LumaPlane = new byte[Width*Height];
-			var ChromaUPlane = new byte[HalfWidth*HalfHeight];
-			var ChromaVPlane = new byte[HalfWidth*HalfHeight];
+			var LumaSize = Width * Height;
+			var ChromaSize = HalfWidth * HalfHeight;
+			var YuvPixels = new byte[LumaSize+ChromaSize+ChromaSize];
+			var LumaPlane = new ArraySegment<byte>(YuvPixels, 0, LumaSize);
+			var ChromaUPlane = new ArraySegment<byte>(YuvPixels, LumaSize, ChromaSize);
+			var ChromaVPlane = new ArraySegment<byte>(YuvPixels, LumaSize+ChromaSize, ChromaSize);
 			byte Luma,ChromaU,ChromaV;
 			for ( var i=0;	i<Width*Height;	i++ )
 			{
@@ -656,11 +662,13 @@ public static class PopH264
 				ChromaUPlane[Chromai] = ChromaU;
 				ChromaVPlane[Chromai] = ChromaV;
 			}
-			PushFrameYuv( LumaPlane, ChromaUPlane, ChromaVPlane, Width, Height, Keyframe );
-			*/
+			//	push as one plane with a format (mediafoundation & avf support this better)
+			PushFrame( YuvPixels, null, null, Width, Height, PixelFormat.Yuv_8_8_8, Keyframe );
+			//PushFrame( LumaPlane, ChromaUPlane, ChromaVPlane, Width, Height, PixelFormat.Yuv_8_8_8, Keyframe );
+#endif
 		}
-		
-		
+
+
 		public void PushFrame(byte[] Plane0,byte[] Plane1,byte[] Plane2,int Width,int Height,PixelFormat Format,bool Keyframe=false)
 		{
 			EncoderFrameMeta FrameMeta;
