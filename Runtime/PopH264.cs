@@ -1,3 +1,14 @@
+#if UNITY_EDITOR_WIN
+	//	not supported
+#elif UNITY_EDITOR_OSX
+	#define ENCODER_SUPPORTS_RGBA_INPUT
+#elif UNITY_IPHONE || UNITY_STANDALONE_OSX
+	#define ENCODER_SUPPORTS_RGBA_INPUT
+#else
+	//	not supported
+#endif
+
+
 using UnityEngine;
 using System.Collections;					// required for Coroutines
 using System.Runtime.InteropServices;		// required for DllImport
@@ -11,10 +22,13 @@ using System.Collections.Generic;
 /// </summary>
 public static class PopH264
 {
-#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
-	private const string PluginName = "PopH264";	//	libPopH264.dylib
-#elif UNITY_EDITOR_WIN
+//	need to place editor defines first as we can be in mac editor, but windows target.
+#if UNITY_EDITOR_WIN
 	private const string PluginName = "PopH264";	//	PopH264.dll
+#elif UNITY_EDITOR_OSX
+	private const string PluginName = "PopH264";	//	libPopH264.dylib
+#elif UNITY_STANDALONE_OSX
+	private const string PluginName = "PopH264";	//	libPopH264.dylib
 #elif UNITY_WSA
 	private const string PluginName = "PopH264.Uwp.dll";	//	PopH264.Uwp.dll
 #elif UNITY_IPHONE
@@ -615,15 +629,15 @@ public static class PopH264
 			var lf = rf * 0.299 + gf * 0.587 + bf * 0.114;
 			var uf = rf * (-0.14713) - gf * 0.28886 + bf * 0.436;
 			var vf = rf * 0.615 - gf * 0.51499 - bf * 0.10001;
-			Luma = (byte)(lf * 255.0);  
-			ChromaU = (byte)((uf * 255.0) + 127.0);  
-			ChromaV = (byte)((vf * 255.0) + 127.0); 
+			Luma = (byte)(lf * 255.0);
+			ChromaU = (byte)((uf * 255.0) + 127.0);
+			ChromaV = (byte)((vf * 255.0) + 127.0);
 		}
 		
 		public void PushFrameRGBA(byte[] Rgba,int Width,int Height,bool Keyframe=false)
 		{
 			//	macos & ios supports RGBA input
-#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+#if ENCODER_SUPPORTS_RGBA_INPUT
 			//	unity texture2D data is often... the wrong size.
 			if ( Rgba.Length > (Width*Height*4) )
 			{
@@ -653,21 +667,25 @@ public static class PopH264
 				var b = Rgba[RgbaIndex+2];
 				var a = Rgba[RgbaIndex+3];
 				RgbToYuv( r,g,b,out Luma,out ChromaU,out ChromaV);
-				var x = i % Width; 
+				var x = i % Width;
 				var y = i / Width;
 				var Chromax = x / 2;
 				var Chromay = y/2;
-				var Chromai = Chromax + (Chromay * HalfWidth ); 
+				var Chromai = Chromax + (Chromay * HalfWidth );
 				LumaPlane[i] = Luma;
 				ChromaUPlane[Chromai] = ChromaU;
 				ChromaVPlane[Chromai] = ChromaV;
 			}
 			//	push as one plane with a format (mediafoundation & avf support this better)
-			PushFrame( YuvPixels, null, null, Width, Height, PixelFormat.Yuv_8_8_8, Keyframe );
+			PushFrameYuvI420( YuvPixels, Width, Height, Keyframe );
 			//PushFrame( LumaPlane, ChromaUPlane, ChromaVPlane, Width, Height, PixelFormat.Yuv_8_8_8, Keyframe );
 #endif
 		}
 
+		public void PushFrameYuvI420(byte[] YuvI420,int Width,int Height,bool Keyframe=false)
+		{
+			PushFrame( YuvI420, null, null, Width, Height, PixelFormat.Yuv_8_8_8, Keyframe );
+		}
 
 		public void PushFrame(byte[] Plane0,byte[] Plane1,byte[] Plane2,int Width,int Height,PixelFormat Format,bool Keyframe=false)
 		{
@@ -677,7 +695,7 @@ public static class PopH264
 			FrameMeta.Keyframe = Keyframe;
 			FrameMeta.LumaSize = (Plane0!=null) ? Plane0.Length : 0;
 			FrameMeta.ChromaUSize = (Plane1!=null) ? Plane1.Length : 0;
-			FrameMeta.ChromaVSize = (Plane2!=null) ? Plane2.Length : 0; 
+			FrameMeta.ChromaVSize = (Plane2!=null) ? Plane2.Length : 0;
 			//FrameMeta.PixelFormat = Format;
 			FrameMeta.Format = Format.ToString();
 
