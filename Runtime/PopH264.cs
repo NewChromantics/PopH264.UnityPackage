@@ -543,7 +543,7 @@ public static class PopH264
 	public struct PoppedFrameMeta
 	{
 		public int					DataSize;	//	bytes
-		public EncodedFrameMeta?	Meta;	//	all the meta sent to PopH264_EncoderPushFrame
+		public EncodedFrameMeta		Meta;	//	all the meta sent to PopH264_EncoderPushFrame
 		public int?					EncodeDurationMs;	//	time it took to encode
 		public int?					DelayDurationMs;	//	time spent in queue before encoding (lag)
 		public int					OutputQueueCount;	//	time spent in queue before encoding (lag)
@@ -628,9 +628,24 @@ public static class PopH264
 				return null;
 			}
 			
-			H264Frame
+			H264Frame Frame;
+			//	todo: pool these buffers
+			Frame.H264Data = new byte[PoppedFrameMeta.DataSize];
+			Frame.Meta = PoppedFrameMeta.Meta;
+			
+			var BytesWritten = PopH264_EncoderPopData( Instance.Value, Frame.H264Data, Frame.H264Data.Length );
+			//	returns 0 if there is no Data to pop.
+			if ( BytesWritten == 0 )
+			{
+				Debug.LogWarning($"Popped 0 bytes for frame; but frame expected; Meta={MetaJson}");
+				return null;
+			}
+			if ( BytesWritten < 0 )
+				throw new Exception($"Error from PopH264_EncoderPopData; {BytesWritten}; Meta={MetaJson}");
 
+			return Frame;
 		}
+	}
 
 	public static byte[] GetH264TestData(string TestDataName)
 	{
