@@ -5,8 +5,11 @@
 	it probably isn't strict C at the moment, but no classes, namespaces etc.
 */
 
-#include <stdint.h>
+//	constant for invalid instance numbers, to avoid use of magic-number 0 around code bases
+enum { PopH264_NullInstance=0 };
 
+#include <stdbool.h>
+#include <stdint.h>
 
 #if !defined(__export)
 
@@ -53,6 +56,7 @@ __export void				PopH264_UnitTest(PopH264_UnitTestCallback* OnTestResult);
 #define POPH264_DECODER_KEY_LOWPOWERMODE			"LowPowerMode"
 #define POPH264_DECODER_KEY_DROPBADFRAMES			"DropBadFrames"
 #define POPH264_DECODER_KEY_DECODESEI				"DecodeSei"				//	mac/ios skip decoding SEI packets as they cause an error
+#define POPH264_DECODER_KEY_STRIPEMULATIONPREVENTION	"StripEmulationPrevention"	//	option to strip emulation prevent bytes 
 
 #define POPH264_DECODER_KEY_WIDTHHINT				"Width"					//	dimensions passed to android decoder to dictate input buffer sizes
 #define POPH264_DECODER_KEY_HEIGHTHINT				"Height"
